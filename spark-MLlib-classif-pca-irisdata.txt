@@ -1,0 +1,34 @@
+import org.apache.spark.mllib.clustering.KMeans
+import org.apache.spark.mllib.linalg.Vectors
+
+val lines = sc.textFile("iris.data")
+val vect = lines.map{line => line.split(',')}
+val vector = vect.map(x => Vectors.dense(x(0).toDouble, x(1).toDouble, x(2).toDouble, x(3).toDouble))
+
+import org.apache.spark.mllib.linalg.Matrix
+import org.apache.spark.mllib.linalg.distributed.RowMatrix
+
+val points = vector  // ...
+val mat: RowMatrix = new RowMatrix(points)
+val pc: Matrix = mat.computePrincipalComponents(2)
+
+// Project points to low-dimensional space
+val projected = mat.multiply(pc).rows
+
+// Train a k-means model on the projected 2-dimensional data
+val numClusters = 3
+val numIterations = 20
+val model = KMeans.train(projected, numClusters, numIterations)
+
+------------------------
+
+val lines1 = sc.textFile("iris.new")
+val vect1 = lines1.map{line => line.split(',')}
+val vector1 = vect1.map(x => Vectors.dense(x(0).toDouble, x(1).toDouble, x(2).toDouble, x(3).toDouble))
+
+val mat1: RowMatrix = new RowMatrix(vector1)
+
+val predicted = mat1.multiply(pc).rows
+val pred = model.predict(predicted)
+
+pred.take(10)

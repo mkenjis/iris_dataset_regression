@@ -1,0 +1,52 @@
+https://archive.ics.uci.edu/ml/datasets/Iris.
+
+val lines = sc.textFile("iris.data")
+
+lines.persist()
+
+val nonEmpty = lines.filter(_.nonEmpty)
+
+Next, we extract the features and labels. The data is in CSV format, so let’s split each line
+
+val parsed = nonEmpty.map{_.split(",")}
+
+We find unique values in the species column in the dataset and assign a 0-based index to each species
+
+val distinctSpecies = parsed.map{a => a(4)}.distinct.collect
+val textToNumeric = distinctSpecies.zipWithIndex.toMap
+
+Now we are ready to create an RDD of LabeledPoint from parsed.
+
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+
+val labeledPoints = parsed.map{a =>
+ LabeledPoint(textToNumeric(a(4)),
+ Vectors.dense(a(0).toDouble, a(1).toDouble, a(2).toDouble, a(3).toDouble))}
+ 
+Next, let’s split the dataset into training and test data. We will use 80% of the data for training a model and 20% for testing it.
+
+val dataSplits = labeledPoints.randomSplit(Array(0.8, 0.2))
+val trainingData = dataSplits(0)
+val testData = dataSplits(1)
+
+Now we are ready to train a model. You can use any classification algorithm at this step. We will use the NaiveBayes algorithm.
+
+import org.apache.spark.mllib.classification.NaiveBayes
+val model = NaiveBayes.train(trainingData)
+
+
+Next, let’s evaluate our model on the test dataset. The first step in evaluating a model is to have it predict a label for each observation in the test dataset.
+
+val predictionsAndLabels = testData.map{d => (model.predict(d.features), d.label)}
+
+With this information, we can calculate various model evaluation metrics.
+
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+val metrics = new MulticlassMetrics(predictionsAndLabels)
+
+val recall = metrics.recall
+
+val precision = metrics.precision
+
+val fMeasure = metrics.fMeasure
