@@ -1,34 +1,46 @@
-import org.apache.spark.mllib.clustering.KMeans
-import org.apache.spark.mllib.linalg.Vectors
 
-val lines = sc.textFile("iris.data")
-val vect = lines.map{line => line.split(',')}
-val vector = vect.map(x => Vectors.dense(x(0).toDouble, x(1).toDouble, x(2).toDouble, x(3).toDouble))
+val rdd = sc.textFile("iris.data").map( x => x.split(",")).map( x => x.slice(0,x.size - 1))
+
+rdd.take(5)
+res0: Array[Array[String]] = Array(Array(5.1, 3.5, 1.4, 0.2), Array(4.9, 3.0, 1.4, 0.2), Array(4.7, 3.2, 1.3, 0.2), Array(4.6, 3.1, 1.5, 0.2), Array(5.0, 3.6, 1.4, 0.2))
+
+import org.apache.spark.mllib.linalg.Vectors
+val vector = rdd.map( x => x.map( y => y.toDouble )).map( x => Vectors.dense(x))
+
+vector.take(5)
+res1: Array[org.apache.spark.mllib.linalg.Vector] = Array([5.1,3.5,1.4,0.2], [4.9,3.0,1.4,0.2], [4.7,3.2,1.3,0.2], [4.6,3.1,1.5,0.2], [5.0,3.6,1.4,0.2])
 
 import org.apache.spark.mllib.linalg.Matrix
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 
-val points = vector  // ...
-val mat: RowMatrix = new RowMatrix(points)
-val pc: Matrix = mat.computePrincipalComponents(2)
+val mat = new RowMatrix(vector)
+val pc = mat.computePrincipalComponents(2)
+pc: org.apache.spark.mllib.linalg.Matrix =
+-0.3615896773814492   -0.6565398832857984
+0.08226888989221337   -0.7297123713265306
+-0.8565721052905283   0.17576740342864616
+-0.35884392624821565  0.07470647013501272
 
 // Project points to low-dimensional space
 val projected = mat.multiply(pc).rows
 
 // Train a k-means model on the projected 2-dimensional data
+import org.apache.spark.mllib.clustering.KMeans
+
 val numClusters = 3
 val numIterations = 20
 val model = KMeans.train(projected, numClusters, numIterations)
 
 ------------------------
 
-val lines1 = sc.textFile("iris.new")
-val vect1 = lines1.map{line => line.split(',')}
-val vector1 = vect1.map(x => Vectors.dense(x(0).toDouble, x(1).toDouble, x(2).toDouble, x(3).toDouble))
+val rdd1 = sc.textFile("iris.new").map( x => x.split(","))
 
-val mat1: RowMatrix = new RowMatrix(vector1)
+val vector1 = rdd1.map( x => x.map( y => y.toDouble )).map( x => Vectors.dense(x))
+
+val mat1 = new RowMatrix(vector1)
 
 val predicted = mat1.multiply(pc).rows
 val pred = model.predict(predicted)
 
 pred.take(10)
+res4: Array[Int] = Array(1, 1, 1, 1, 1, 2, 2, 1)

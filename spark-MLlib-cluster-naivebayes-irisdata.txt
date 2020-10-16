@@ -1,4 +1,3 @@
-https://archive.ics.uci.edu/ml/datasets/Iris.
 
 val lines = sc.textFile("iris.data")
 
